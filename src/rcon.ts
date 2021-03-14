@@ -1,4 +1,3 @@
-import { createConnection, Socket } from 'net'
 import protocol from './protocol'
 import * as packets from './packet'
 
@@ -8,7 +7,7 @@ class RCON {
     maxPacketSize: number
     encoding: packets.EncodingOptions
     timeout: number
-    connection!: Socket
+    connection!: WebSocket
     connected: boolean
     authenticated: boolean
 
@@ -25,6 +24,7 @@ class RCON {
 
         this.authenticated = false
         this.connected = false
+        this.connection = new WebSocket(`ws://${this.host}:${this.port}`)
     }
 
     /**
@@ -32,11 +32,6 @@ class RCON {
      * @param password Password string
      */
     async authenticate(password: string): Promise<boolean> {
-
-        if (!this.connected) {
-            await this.connect()
-        }
-
         return new Promise((resolve, reject) => {
             if (this.authenticated) {
                 reject(Error('Already authenticated'))
@@ -67,13 +62,13 @@ class RCON {
                 return
             }
             const packetId = Math.floor(Math.random() * (256 - 1) + 1)
-            if (!this.connection.writable) {
+            if (!this.connection.send) {
                 reject(Error('Unable to write to socket'))
                 return
             }
 
             if (!this.authenticated) {
-                reject(Error('Not authorized'))
+                reject(Error('Not authorised'))
                 return
             }
 
@@ -84,46 +79,23 @@ class RCON {
     }
 
     /**
-     * Creates a connection to the socket
-     */
-    private connect(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            this.connection = createConnection({
-                host: this.host,
-                port: this.port
-            }, () => {
-                if (this.connection) this.connection.removeListener('error', reject)
-                this.connected = true
-                resolve()
-            })
-
-            this.connection.once('error', reject)
-            this.connection.setTimeout(this.timeout)
-
-        })
-    }
-
-    /**
      * Destroys the socket connection
      */
     disconnect(): Promise<void> {
         this.authenticated = false
         this.connected = false
-        this.connection.destroy()
+        this.connection.close()
 
         return new Promise((resolve, reject) => {
-            const onError = (e: Error): void => {
-                this.connection.removeListener('close', onClose)
+            const onError = (e: any): void => {
+                this.connection.removeEventListener('close', onClose)
                 reject(e)
             }
 
             const onClose = (): void => {
-                this.connection.removeListener('error', onError)
+                this.connection.removeEventListener('error', onError)
                 resolve()
             }
-
-            this.connection.once('close', onClose)
-            this.connection.once('error', onError)
         })
     }
 
@@ -146,8 +118,8 @@ class RCON {
 
             let response = ''
 
-            const onData = (packet: Buffer): void => {
-                const decodedPacket = packets.decode(packet, this.encoding)
+            const onData = (event: MessageEvent): void => {
+                const decodedPacket = packets.decode(event.data, this.encoding)
 
                 // Server will respond twice (0x00 and 0x02) if we send an auth packet (0x03)
                 // but we need 0x02 to confirm
@@ -160,23 +132,23 @@ class RCON {
                         resolve(false)
                     }
 
-                    this.connection.removeListener('data', onData)
+                    this.connection.removeEventListener('message', onData)
                 } else if (id === decodedPacket.id) {
                     response = response.concat(decodedPacket.body.replace(/\n$/, '\n')) // remove last line break
 
                     // Check the response if it's defined rather than if it contains 'command ${body}'
                     // Reason for this is because we no longer need to check if it starts with 'command', testing shows it never will
                     if (response) {
-                        this.connection.removeListener('data', onData)
+                        this.connection.removeEventListener('message', onData)
                         resolve(response)
                     }
                 }
 
-                this.connection.removeListener('error', onError)
+                this.connection.removeEventListener('error', onError)
             }
 
-            const onError = (e: Error): void => {
-                this.connection.removeListener('data', onData)
+            const onError = (e: Event): void => {
+                this.connection.removeEventListener('data', onData as EventListener)
                 reject(e)
             }
 
@@ -187,9 +159,11 @@ class RCON {
                 return
             }
 
-            this.connection.on('data', onData)
-            this.connection.on('error', onError)
-            this.connection.write(encodedPacket)
+            if (!this.connection) throw { message: 'Connection not defined'}
+
+            this.connection.onmessage = onData
+            this.connection.onerror = onError
+            this.connection.send(encodedPacket)
         })
     }
 }

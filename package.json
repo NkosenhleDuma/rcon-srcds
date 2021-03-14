@@ -1,6 +1,6 @@
 {
-  "name": "rcon-srcds",
-  "version": "2.0.1",
+  "name": "@NkosenhleDuma/rcon-srcds",
+  "version": "2.0.4",
   "description": "A modern NodeJS library for the Source RCON Protocol",
   "main": "dist/rcon.js",
   "scripts": {
@@ -8,7 +8,7 @@
     "lint": "eslint . --ext .ts",
     "build": "tsc",
     "prepare": "npm run build",
-    "prepublishOnly": "npm run lint",
+    "prepublish": "npm run lint",
     "preversion": "npm run lint",
     "version": "npm run format && git add -A src"
   },
@@ -17,7 +17,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/EnriqCG/rcon-srcds.git"
+    "url": "git+https://github.com/NkosenhleDuma/rcon-srcds.git"
   },
   "keywords": [
     "rcon",
@@ -30,18 +30,16 @@
     "promise",
     "async"
   ],
-  "author": "Enrique Carpintero <coding@enriqcg.io>",
-  "contributors": [
-    "Markus Adrario (https://github.com/Taraman17)",
-    "c43721 (https://github.com/c43721)"
-  ],
+  "author": "Nkosenhle Duma<personal@godsonduma.com>",
+  "contributors": [],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/EnriqCG/rcon-srcds/issues"
+    "url": "https://github.com/NkosenhleDuma/rcon-srcds/issues"
   },
-  "homepage": "https://github.com/EnriqCG/rcon-srcds",
+  "homepage": "https://github.com/NkosenhleDuma/rcon-srcds",
   "devDependencies": {
     "@types/node": "^13.13.4",
+    "@types/websocket": "^1.0.2",
     "@typescript-eslint/eslint-plugin": "^2.30.0",
     "@typescript-eslint/parser": "^2.30.0",
     "eslint": "^6.8.0",
